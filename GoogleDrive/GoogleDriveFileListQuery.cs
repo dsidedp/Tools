@@ -81,6 +81,8 @@ namespace DSide.GoogleDrive
                     case ExpressionType.Not:
                         QueryParts.Push(NotToken);
                         return base.Visit(node);
+                    case ExpressionType.Conditional when node is ConditionalExpression cond:
+                        return TryEvalConditional(cond) ? Visit(cond.IfTrue) : Visit(cond.IfFalse);
                 }
 
                 foreach (var (check, process) in ComplexRules)
@@ -93,7 +95,16 @@ namespace DSide.GoogleDrive
                 };
                 throw new NotSupportedException($"Node of type {node.NodeType} not supported.");
             }
-
+            
+            #region ConstantBools
+            private bool ShouldProcessConstantBools(Expression node) => node is ConstantExpression ce && ce.Type == typeof(bool);
+            private void ProcessConstantBools(Expression node)
+            {
+                var mc = node as ConstantExpression;
+                QueryParts.Push((bool)mc.Value ? "name = '' or name != ''" : "name = '' and name != ''");
+            }
+            #endregion 
+                
             #region PropertyNotEqual
             private bool ShouldProcessPropertyNotEqual(Expression node) => node.NodeType == ExpressionType.NotEqual && IsBinaryWithParameter(node, nameof(Properties), IndexerPropertyName);
             private void ProcessPropertyNotEqual(Expression node)
