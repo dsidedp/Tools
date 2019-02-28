@@ -449,11 +449,19 @@ namespace DSide.GoogleDrive
                 if (!Exists) throw new ApplicationException($"Object {Id} does not exist in storage.");
                 if (IsDirectory) throw new ApplicationException($"Object {Id} is Dirctory thus has no content.");
                 Service._logger.LogInformation($"Retrieving content for {Id}");
-                //note: not using webContent url since it might return 302 htlp responce
+                //note: not using webContent url since it might return 302 http responce
                 var req = Service._driveService.Files.Get(Id);
                 req.SupportsTeamDrives = Service._config.SupportsTeamDrives;
-                var reqUrl = req.CreateRequest().RequestUri.AbsoluteUri;
-                return Service._driveService.HttpClient.GetStreamAsync(reqUrl + "&alt=media");
+                var uri = new UriBuilder(req.CreateRequest().RequestUri.AbsoluteUri);
+                if (uri.Query == null || uri.Query.Length <= 1)
+                {
+                    uri.Query = "alt=media";
+                }
+                else
+                {
+                    uri.Query = uri.Query.Substring(1) + "&alt=media";
+                }
+                return Service._driveService.HttpClient.GetStreamAsync(uri.Uri.AbsoluteUri);
             }
 
             public Task<Stream> GetContentPreviewStreamAsync()
